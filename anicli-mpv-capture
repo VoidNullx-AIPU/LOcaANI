@@ -1,0 +1,30 @@
+#!/bin/bash
+# Pretends to be mpv for ani-cli's `*mpv*` case.
+# Captures all args to a JSON file, exits 0 so ani-cli exits cleanly.
+# Combined with --no-detach --exit-after-play on the ani-cli call.
+
+set -e
+
+OUT="${ANICLI_CAPTURE_FILE:-/tmp/anicli_capture.json}"
+mkdir -p "$(dirname "$OUT")"
+
+python3 - "$OUT" "$@" <<'PY'
+import json, sys
+out = sys.argv[1]
+args = sys.argv[2:]
+referer, sub_file, title, media_url = "", "", "", ""
+for a in args:
+    if a.startswith("--referrer="):
+        referer = a.split("=", 1)[1]
+    elif a.startswith("--sub-file="):
+        sub_file = a.split("=", 1)[1]
+    elif a.startswith("--force-media-title="):
+        title = a.split("=", 1)[1]
+    elif not a.startswith("--"):
+        media_url = a
+with open(out, "w") as f:
+    json.dump({"referer": referer, "sub_file": sub_file,
+               "title": title, "url": media_url}, f)
+PY
+
+exit 0
